@@ -119,7 +119,7 @@ import time
 from ..core import Device, log, CONTROL
 
 class IRRemoteControlDevice(Device):
-    CMD_SEND_KEY_CODE =	"send_ir"  # Command to start sending a key
+    CMD_SEND_KEY_CODE = "send_ir"   # Command to start sending a key
     DP_SEND_IR        = "201"       # ir_send, send and report (read-write)
     DP_LEARNED_ID     = "202"       # ir_study_code, report only (read-only)
     DP_MODE           =   "1"
@@ -184,24 +184,18 @@ class IRRemoteControlDevice(Device):
         self.study_end()
         self.control_type = 0
         status = self.status()
-        while status:
-            if status and 'dps' in status:
-                # original devices using DPS 201/202
-                if self.DP_SEND_IR in status['dps']:
-                    log.debug( 'Detected control type 1' )
-                    self.control_type = 1
-                    break
-                # newer devices using DPS 1-13
-                elif self.DP_MODE in status['dps']:
-                    log.debug( 'Detected control type 2' )
-                    self.control_type = 2
-                    break
+        while status and 'dps' in status:
+            # original devices using DPS 201/202
+            if self.DP_SEND_IR in status['dps']:
+                log.debug( 'Detected control type 1' )
+                self.control_type = 1
+            # newer devices using DPS 1-13
+            elif self.DP_MODE in status['dps']:
+                log.debug( 'Detected control type 2' )
+                self.control_type = 2
             status = self._send_receive(None)
         if not self.control_type:
             log.warning( 'Detect control type failed! control_type= must be set manually' )
-        elif status:
-            # try and make sure no data is waiting to be read
-            status = self._send_receive(None)
         self.set_socketTimeout( old_timeout )
         self.set_socketPersistent( old_persist )
 
@@ -241,7 +235,7 @@ class IRRemoteControlDevice(Device):
     def study_start( self ):
         self.send_command( 'study' )
 
-    def	study_end( self ):
+    def study_end( self ):
         self.send_command( 'study_exit' )
 
     def receive_button( self, timeout=30 ):
@@ -312,7 +306,7 @@ class IRRemoteControlDevice(Device):
     @staticmethod
     def build_head( freq=38, bit_time=0, zero_time=0, one_time=0, bit_time_type=1, timings=[], convert_time=True ):
         timings = list(timings)
-        freq =	round( freq * 100)
+        freq = round( freq * 100)
         if not bit_time and len(timings) > 0:
             bit_time = timings[0]
             timings = timings[1:]
@@ -763,7 +757,8 @@ class IRRemoteControlDevice(Device):
                 mylog.debug('!! need_abort !!')
                 continue
 
-            mylog.debug( 'zero sequence: %r, one sequence: %r', zero_symbol, one_symbol )
+            mylog.debug( 'zero sequence: %r, one sequence: %r', zero_symbol, one_symbol ) # pylint: disable=used-before-assignment
+
 
             raw_symbol_pattern = ''
             for c in symbol_pattern:
@@ -793,7 +788,7 @@ class IRRemoteControlDevice(Device):
                             bits = data = 0
                     elif k == one_symbol:
                         removed += k_symbol_pattern
-                        bits +=	1
+                        bits += 1
                         data |= 1 << (8 - bits)
                         if bits == 8:
                             byts.append( data )
@@ -868,7 +863,7 @@ class IRRemoteControlDevice(Device):
         return header, '01' + key1
 
     @staticmethod
-    def	_merge_similar_pulse_times( p_count, fudge ):
+    def _merge_similar_pulse_times( p_count, fudge ):
         p_map = { }
         mod = True
         while mod:
@@ -1027,7 +1022,7 @@ class IRRemoteControlDevice(Device):
         result_string = ''
         symbols = { results[0][0]: '%', 4500: '^', 2250: '&', results[0][5]: '*' }
         for r in results:
-            if r[0] not in symbols or r[1] not	in symbols:
+            if r[0] not in symbols or r[1] not in symbols:
                 return None
             result_string += symbols[r[0]] + symbols[r[1]]
             result_string += IRRemoteControlDevice._build_key_bitfield( r[3], r[4], r[2] )

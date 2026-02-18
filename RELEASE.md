@@ -1,5 +1,405 @@
 # RELEASE NOTES
 
+## 1.17.4 - Cloud Config
+
+- Cloud: Add `configFile` option to the Cloud constructor, allowing users to specify the config file location (default remains 'tinytuya.json') by @blackw1ng in https://github.com/jasonacox/tinytuya/pull/640
+
+## v1.17.3 - Colorama Optional
+
+* This update makes the colorama dependency optional for the tinytuya library, allowing it to function without colorama while gracefully disabling color output. This will help with memory lor dependency limited platforms. Update by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/637. 
+
+## v1.17.2 - BulbDevice Fix
+
+* Add Singapore datacenter, update BulbDevice for non-bulb devices again by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/625
+
+## v1.17.1 - Fix BulbDevice
+
+* Fix BulbDevice for non-bulb devices. This will allow BulbDevice to be used even for non-bulb devices, e.g. turn_on() & turn_off(), by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/620.
+
+## v1.17.0 - BulbDevice Rewrite
+
+* Rewrite BulbDevice and rework set_multiple_values() @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/617
+* Tool updates: pcap parse fix, new broadcast relay by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/612
+* Fix initialization bug with python2 (embedded devices) by @Ircama in https://github.com/jasonacox/tinytuya/pull/615
+
+BulbDevice Example Usage
+
+```python
+import time
+import random
+import tinytuya
+
+d = tinytuya.BulbDevice(DEVICEID, address=DEVICEIP, local_key=DEVICEKEY, version=DEVICEVERS, persist=True)
+
+# BASIC FUNCTIONS
+print('Basic Tests')
+d.set_colour(255,127,63)           # Set to orange
+d.set_white_percentage(100.0, 0.0) # 100% brightness, 0% colour temperature
+d.set_brightness_percentage(100)   # 100% brightness
+
+# MUSIC MODE
+print("Music Mode")
+d.set_mode('music')
+d.set_socketPersistent( True )
+# Devices respond with a command ACK, but do not send DP updates.
+# Setting the 2 options below causes it to wait for a response but
+#   return immediately after an ACK.
+d.set_sendWait( None )
+d.set_retry( False )
+for x in range(100):
+    red = random.randint(0,255)
+    green = random.randint(0,255)
+    blue = random.randint(0,255)
+    if (x % 6 == 0):
+        # extend every 6 beat
+        d.set_music_colour( d.MUSIC_TRANSITION_FADE, red, green, blue )
+        time.sleep(2)
+    else:
+        # Jump!
+        d.set_music_colour( d.MUSIC_TRANSITION_JUMP, red, green, blue )
+        time.sleep(0.1) # the bulbs seem to get upset if updates are faster than 0.1s (100ms)
+
+# SCENE MODE
+if d.bulb_has_capability(d.BULB_FEATURE_SCENE_DATA):
+    d.set_mode('scene')
+    print('String based scenes compatible smartbulb detected.')
+    # Example: Color rotation 
+    print('Switch to Scene 7 - Color Rotation')
+    d.set_scene( 7, '464602000003e803e800000000464602007803e803e80000000046460200f003e803e800000000464602003d03e803e80000000046460200ae03e803e800000000464602011303e803e800000000')
+```
+
+## v1.16.3 - Cloud Error Handling
+
+* Add error handling in Cloud getdevices() function for edge case where old devices.json has corrupt or malformed device entries.
+* Server p14 update: Add main loop logic to try to recover when exception occurs.
+
+## v1.16.2 - Invalid JSON Handling
+
+* Handle invalid binary data in the JSON from the device better by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/607 re: #606
+
+## v1.16.1 - Scanner Error Handling
+
+* Adds error handling for cases when the scanner broadcasts fails by @x011 in https://github.com/jasonacox/tinytuya/pull/585 and @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/587
+
+## v1.16.0 - Code Refactoring
+
+* This update refactors core.py by splitting it up into smaller, more logical files. It puts it in a `core` directory, so existing code that imports from `tinytuya.core` should be unaffected.
+* Add Contrib support for Electric Blankets such as Goldair GPFAEB-Q by @leodenham in https://github.com/jasonacox/tinytuya/pull/528
+* Add IoT core service renewal info to the setup wizard in the README by @lorumic in https://github.com/jasonacox/tinytuya/pull/558
+* Contributing with a new device ColorfulX7Device by @CheAhMeD in https://github.com/jasonacox/tinytuya/pull/568
+* Add WiFi Dual Meter device by @ggardet in https://github.com/jasonacox/tinytuya/pull/569
+* Refactoring: split up core.py by @tringenbach in https://github.com/jasonacox/tinytuya/pull/575
+* fix: update tests.py to pass, add to github workflow by @tringenbach in https://github.com/jasonacox/tinytuya/pull/576
+
+## v1.15.1 - Scanner Fixes
+
+* Fix scanner broadcast attempting to bind to the wrong IP address, introduced in v1.15.0
+
+## v1.15.0 - Scanner Fixes
+
+* Fix force-scanning bug in scanner introduced in last release and add broadcast request feature to help discover Tuya version 3.5 devices by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/511.
+* Server p12 updates:
+    * Added "Force Scan" button to cause server to run a network scan for devices not broadcasting.
+    * Minor updates to UI for a cleaner title and footer to accommodate button.
+    * Added logic to allow settings via environmental variables.
+    * Add broadcast request to local network for version 3.5 devices. 
+    * Fix bug with cloud sync refresh that was losing device mappings.
+    * Added "Cloud Sync" button to poll cloud for updated device data.
+
+## v1.14.0 - Command Line Updates
+
+* PyPI 1.14.0 rewrite of main to use argparse and add additional options by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/503
+* Add support for `pipx install tinytuya` as raised by @felipecrs in https://github.com/jasonacox/tinytuya/issues/500 allowing for easier CLI use.
+* Note possible breaking change: Running `tinytuya` by itself will now produce a "Usage" page instead of running a scan.  Use `tinytuya scan` or `python -m tinytuya scan`.
+* Updated docs to explain timeout as raised by @GamerPeggun in https://github.com/jasonacox/tinytuya/issues/501
+
+## v1.13.2 - Contrib Updates
+
+* Add example for XmCosy+ RGBW patio string lights by @bikerglen in https://github.com/jasonacox/tinytuya/pull/445
+* Fix case when the number of colors in the colors list is not exactly six by @bikerglen in https://github.com/jasonacox/tinytuya/pull/446
+* Adding support for Presence Detector Device by @mrioan in https://github.com/jasonacox/tinytuya/pull/451
+* Makes some tweaks to the recently-added Contrib/PresenceDetectorDevice by @mrioan and Deprecates `Contrib/__init__.py` by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/466
+* Add a note about QR code scanning with Dark Reader to the README [#463](https://github.com/jasonacox/tinytuya/issues/463) by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/466
+* Add option to specify port in XenonDevice class by @unit-404 in https://github.com/jasonacox/tinytuya/pull/468
+
+## v1.13.1 - Cryptography Version
+
+* PyPI 1.13.1
+* Require pyca/cryptography>=3.1 or fallback to PyCryptodome
+* Add `tools/fake-v35-device.py` script to tools
+* Allow pyca/cryptography to GCM decrypt without the tag (makes it match PyCryptodome) by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/424
+
+## v1.13.0 - Crypto Library Update
+
+* PyPI 1.13.0
+* Updates AESCipher() to make it a bit easier to add additional crypto libraries. It also adds pyca/cryptography as the default. By @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/423
+* Fixes issue with tinytuya.find_device() for v3.1 devices and the infinite loop in Contrib/IRRemoteControlDevice.py (Closes #403).
+* Officially removes Python 2.7 support.
+
+## v1.12.11 - Bug Fix for _get_socket()
+
+* PyPI 1.12.11
+* Fix local variable collision in `_get_socket()` exception handling for device offline conditions.
+
+## v1.12.10 - Various Updates
+
+* PyPI 1.12.10
+* Various updates inspired by recent issues by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/397 - Updates to scanner, added error code and helpful troubleshooting messages, make connection/key errors more descriptive, added socketRetryLimit (`connection_retry_limit`) and socketRetryDelay (`connection_retry_limit`) to Device constructor args.
+* [[MQTT Gateway for Server](https://github.com/jasonacox/tinytuya/blob/master/server/mqtt/mqtt_gateway.py)] Fixed endless loop causing 100% cpu usage by @michaelmittermair in https://github.com/jasonacox/tinytuya/pull/390
+
+
+## v1.12.9 - Import Issue with urllib3
+
+* PyPI 1.12.9
+* Add graceful handling of issue where urllib3 v2.0 causes `ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+` error. See https://github.com/jasonacox/tinytuya/issues/377 & https://github.com/jasonacox/tinytuya/pull/379.
+* Fix bug in Cloud getdevices() that can error with older `devices.json` versions as raised in https://github.com/jasonacox/tinytuya/issues/381 & https://github.com/jasonacox/tinytuya/pull/382
+* [[Server](https://github.com/jasonacox/tinytuya/tree/master/server)] Mapping for DP IDs by @mschlenstedt in https://github.com/jasonacox/tinytuya/pull/353 and https://github.com/jasonacox/tinytuya/pull/363
+* [[MQTT Gateway for Server](https://github.com/jasonacox/tinytuya/blob/master/server/mqtt/mqtt_gateway.py)] by @mschlenstedt in https://github.com/jasonacox/tinytuya/pull/364, https://github.com/jasonacox/tinytuya/pull/367 and https://github.com/jasonacox/tinytuya/pull/366
+* Add Contrib support for Inverter Heat Pump such as Fairland IPHR55 by @valentindusollier in https://github.com/jasonacox/tinytuya/pull/368
+
+## v1.12.8 - Device DP Mapping
+
+* PyPI 1.12.8
+* [[Server](https://github.com/jasonacox/tinytuya/tree/master/server)] - Use {DeviceName} instead of {DeviceID} alternatively for API commands by @mschlenstedt in https://github.com/jasonacox/tinytuya/pull/352
+* Wizard - New Cloud functions to download DP Name mappings by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/356
+
+Example device from UPDATED `devices.json` showing new *"mapping"* data:
+
+```json
+    {
+        "name": "Smart Plug",
+        "id": "01234567890abcdef012",
+        "key": "abcdef0123456789",
+        "mac": "aa:bb:cc:dd:33:11",
+        "uuid": "01234567890abcdef012",
+        "category": "cz",
+        "product_name": "WP1-Smart Socket",
+        "product_id": "iXfg9AQVUPhlfyGw",
+        "biz_type": 18,
+        "model": "WP1/10A/\u5e26\u8ba1\u91cf/gosund",
+        "sub": false,
+        "icon": "https://images.tuyaus.com/smart/icon/1472009231_0.png",
+        "mapping": {
+            "1": {
+                "code": "switch",
+                "type": "Boolean",
+                "values": {}
+            },
+            "4": {
+                "code": "cur_current",
+                "type": "Integer",
+                "values": {
+                    "unit": "mA",
+                    "min": 0,
+                    "max": 30000,
+                    "scale": 0,
+                    "step": 1
+                }
+            },
+            "5": {
+                "code": "cur_power",
+                "type": "Integer",
+                "values": {
+                    "unit": "W",
+                    "min": 0,
+                    "max": 50000,
+                    "scale": 1,
+                    "step": 1
+                }
+            },
+            "6": {
+                "code": "cur_voltage",
+                "type": "Integer",
+                "values": {
+                    "unit": "V",
+                    "min": 0,
+                    "max": 5000,
+                    "scale": 1,
+                    "step": 1
+                }
+            },
+            "2": {
+                "code": "countdown_1",
+                "type": "Integer",
+                "values": {
+                    "unit": "s",
+                    "min": 0,
+                    "max": 86400,
+                    "scale": 0,
+                    "step": 1
+                }
+            }
+        },
+        "ip": "10.20.30.40",
+        "version": "3.1"
+    }
+```
+
+## v1.12.7 - Status Bug Fix
+
+* PyPI 1.12.7
+* Fix bug in `detect_available_dps()` to resolve issue where `status()` call for smartbulbs would randomly cause devices to turn off by @xgustavoh in https://github.com/jasonacox/tinytuya/pull/345
+
+## v1.12.6 - Minor Fixes
+
+* PyPI 1.12.6
+* Cloud - Bug Fix KeyError: 'has_more' by @Liborsaf in https://github.com/jasonacox/tinytuya/pull/342
+* Add Contrib support for IR+RF devices such as the S11 by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/343
+
+## v1.12.5 - Scanner Update
+
+* PyPI 1.12.5
+* Remove requirement for PyCryptodome in scanner (allows pyaes for devices < 3.5) by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/332
+* Added AES library details to debug output.
+* README update - Add link to Moonraker support project by @teejo75 in https://github.com/jasonacox/tinytuya/pull/335
+* Misc minor updates by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/336: Normalize ability/ablilty in scanner https://github.com/jasonacox/tinytuya/issues/333 - Fix examples/getstatus.py - Cloud device list and Content-Type update https://github.com/jasonacox/tinytuya/issues/324 - Rework examples/async_send_receive.py
+
+## v1.12.4 - Wizard Scan for ID
+
+* PyPI 1.12.4
+* Adds option allowing wizard to scan for a Device ID by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/331 - Related to Tuya IoT permission denied issue https://github.com/jasonacox/tinytuya/issues/330 and https://github.com/jasonacox/tinytuya/issues/323
+
+## v1.12.3 - Fix Cloud Device List
+
+* PyPI 1.12.3
+* Fix fan_run_time typo in Contrib/ThermostatDevice by @elockman in https://github.com/jasonacox/tinytuya/pull/326
+* Cloud device list and Content-Type update by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/324 Bug Fix for https://github.com/jasonacox/tinytuya/issues/323
+
+## v1.12.2 - Gateway/Sub-device Update
+
+* PyPI 1.12.2
+* Gateway/sub-device updates, payload_dict reworked, and `subdev_query()` added by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/308
+* Add [tools/pcap_parse.py](https://github.com/jasonacox/tinytuya/tree/master/tools) by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/311
+* [[Server](https://github.com/jasonacox/tinytuya/tree/master/server)] Formatted data into tables and added version information.
+
+## v1.12.1 - Cloud & Wizard Updates
+
+* PyPI 1.12.1
+* [[tinytuya.Cloud](https://github.com/jasonacox/tinytuya#tuya-cloud-access)] Added cloud `sendcommand()` parameter for URI by @Syrooo in https://github.com/jasonacox/tinytuya/pull/303
+* Wizard and [tinytuya.Cloud](https://github.com/jasonacox/tinytuya#tuya-cloud-access) - Fetch the device list a 2nd time to make sure we have the local key by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/306 - Updated internal `_get_all_devices()` and  `_update_device_list()`
+
+## v1.12.0 - Zigbee Gateway Updates
+
+* PyPI 1.12.0
+* Improve detect_available_dps() function by @nyok92 in https://github.com/jasonacox/tinytuya/pull/294
+* Tighten up parent device detection in the Wizard by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/296
+* Updates for Zigbee Gateway sub-device usage by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/298
+
+## v1.11.0 - Cloud Device Listing
+
+* PyPI 1.11.0
+* Simplification and cleanup of math functions in core and IRRemoteControlDevice by @gstein in https://github.com/jasonacox/tinytuya/pull/291
+* Rework Cloud device list fetching by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/289 includes new `tuya-raw.json` (backward compatible).
+
+Additional data in tuya-raw.json:
+
+```json
+    "file": {
+        "name": "tuya-raw.json",
+        "description": "Full raw list of Tuya devices.",
+        "account": "xxxxxxxxxxxxxxxxxxxx",
+        "date": "2023-03-04T19:50:08.879865",
+        "tinytuya": "1.11.0"
+    }
+```
+
+## v1.10.3 - Cloud Updates
+
+* PyPI 1.10.3
+* Fix params leak in getdevicelog() as discovered by @klightspeed and @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/219
+* Log message formatting by @johnno1962 in https://github.com/jasonacox/tinytuya/pull/285
+* Add Cloud IR example, updated docs, and allow an optional initial token to Cloud by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/288
+
+
+## v1.10.2 - Bug Fix for ThermostatDevice and Misc. Cleanup
+
+* PyPI 1.10.2
+* Fix Contrib.ThermostatDevice.SetSetpoint() by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/273
+* Added command line -debug flag and code cleanup based on pylint by @jasonacox in https://github.com/jasonacox/tinytuya/pull/276
+
+## v1.10.1 - Bug Fix for BulbDevice and Zigbee Devices
+
+* PyPI 1.10.1
+* Fix _process_message() missing parameters discovered via issue https://github.com/jasonacox/tinytuya/issues/266 by @jasonacox in https://github.com/jasonacox/tinytuya/pull/267
+* Removed bulb attribute conditional blocking in BulbDevice set_colour(), set_hsv() and set_colourtemp() as some devices do not correctly report capabilities. Conditional provides debug warning message instead by @jasonacox in https://github.com/jasonacox/tinytuya/issues/265
+
+## v1.10.0 - Tuya Protocol v3.5 Device Support / Scanner Rewrite
+
+* PyPI 1.10.0
+* Tuya Protocol v3.5 Support by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/256 https://github.com/jasonacox/tinytuya/pull/257 & https://github.com/jasonacox/tinytuya/pull/259
+* [[tinytuya.Cloud](https://github.com/jasonacox/tinytuya#tuya-cloud-access)] Updated getdevicelog() to handle fetching more when "has_next" is True by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/236
+* [[Server](https://github.com/jasonacox/tinytuya/tree/master/server)] Added delayed-off & help function to server by @cowboy3d in https://github.com/jasonacox/tinytuya/pull/242 & https://github.com/jasonacox/tinytuya/pull/243
+* [[Server](https://github.com/jasonacox/tinytuya/tree/master/server)] Added ability to modify device dps using web browser by @cowboy3d in https://github.com/jasonacox/tinytuya/pull/244
+* Added nowait parameter to status() and split message parsing into separate function by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/253
+* [[Scanner](https://github.com/jasonacox/tinytuya#network-scanner)] Complete rewrite of the scanner for speed improvements and allowing force-scanning of IP ranges by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/252 https://github.com/jasonacox/tinytuya/pull/254 https://github.com/jasonacox/tinytuya/pull/261 & https://github.com/jasonacox/tinytuya/pull/262
+
+```
+TinyTuya [1.10.0]
+
+Usage:
+
+    python -m tinytuya <command> [<max_time>] [-nocolor] [-force [192.168.0.0/24 192.168.1.0/24 ...]] [-h]
+
+      wizard         Launch Setup Wizard to get Tuya Local KEYs.
+      scan           Scan local network for Tuya devices.
+      devices        Scan all devices listed in devices.json file.
+      snapshot       Scan devices listed in snapshot.json file.
+      json           Scan devices listed in snapshot.json file [JSON].
+      <max_time>     Maximum time to find Tuya devices [Default=18]
+      -nocolor       Disable color text output.
+      -force         Force network scan for device IP addresses.  Auto-detects network range if none provided.
+      -no-broadcasts Ignore broadcast packets when force scanning.
+      -h             Show usage.
+```
+
+## v1.9.1 - Minor Bug Fix for Cloud
+
+* PyPI 1.9.1
+* Fix logging for Cloud `_gettoken()` to prevent extraneous output. #229
+
+## v1.9.0 - Zigbee Gateway Support
+
+* PyPI 1.9.0
+* Add support for subdevices connected to gateway by @LesTR in https://github.com/jasonacox/tinytuya/pull/222
+* Rework Zigbee Gateway handling to support multiple devices with persistent connections by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/226
+* Add support for newer IR devices, and several IR format converters by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/228
+* Rework Cloud log start/end times, and update documentation by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/229
+
+```python
+import tinytuya
+
+# Zigbee Gateway support uses a parent/child model where a parent gateway device is
+#  connected and then one or more children are added.
+
+# Configure the parent device
+gw = tinytuya.Device( 'eb...4', address=None, local_key='aabbccddeeffgghh', persist=True, version=3.3 )
+
+print( 'GW IP found:', gw.address )
+
+# Configure one or more children.  Every dev_id must be unique!
+zigbee1 = tinytuya.OutletDevice( 'eb14...w', cid='0011223344556601', parent=gw )
+zigbee2 = tinytuya.OutletDevice( 'eb04...l', cid='0011223344556689', parent=gw )
+
+print(zigbee1.status())
+print(zigbee2.status())
+```
+
+## v1.8.0 - Expanded Cloud Functions
+
+* PyPI 1.8.0
+* Add AtorchTemperatureController by @Poil in https://github.com/jasonacox/tinytuya/pull/213
+* Add new Cloud functions to fetch device logs from TuyaCloud (`getdevicelog(id)`), make generic cloud request with custom URL and params (`cloudrequest(url, ...)`) and fetch connection status (`getconnectstatus(id)`) by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/219
+* Update README for new Cloud functions, and tighter deviceid error checking by @uzlonewolf in https://github.com/jasonacox/tinytuya/pull/220
+
+```python
+import tinytuya
+import json
+
+c = tinytuya.Cloud()
+r = c.getdevicelog( '00112233445566778899' )
+print( json.dumps(r, indent=2) )
+```
+
 ## v1.7.2 - Fix Contrib Devices Bug
 
 * PyPI 1.7.2
