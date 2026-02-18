@@ -25,7 +25,7 @@ import time
 import errno
 import base64
 import traceback
-import tinytuya
+import aiotinytuya as tinytuya
 
 try:
     from colorama import init

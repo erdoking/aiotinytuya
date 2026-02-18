@@ -25,7 +25,7 @@ Credits
 from __future__ import print_function
 import json
 from datetime import datetime
-import tinytuya
+import aiotinytuya as tinytuya
 import sys
 
 try:

@@ -1,7 +1,7 @@
 import setuptools
 from pkg_resources import DistributionNotFound, get_distribution
 
-from tinytuya import __version__
+from aiotinytuya import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -31,14 +31,14 @@ for cryptolib in CHOOSE_CRYPTO_LIB:
 INSTALL_REQUIRES.append( pref_lib )
 
 setuptools.setup(
-    name="tinytuya",
+    name="aiotinytuya",
     version=__version__,
     author="Jason Cox",
     author_email="jason@jasonacox.com",
     description="Python module to interface with Tuya WiFi smart devices",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/jasonacox/tinytuya',
+    url="https://github.com/fhempy/aiotinytuya",
     packages=setuptools.find_packages(exclude=("sandbox",)),
     install_requires=INSTALL_REQUIRES,
     entry_points={"console_scripts": ["tinytuya=tinytuya.__main__:dummy"]},

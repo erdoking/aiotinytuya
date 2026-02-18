@@ -89,6 +89,8 @@
 
 """
 
+import asyncio
+
 from .core import *
 from .core import __version__
 from .core import __author__
@@ -97,3 +99,117 @@ from .OutletDevice import OutletDevice
 from .CoverDevice import CoverDevice
 from .BulbDevice import BulbDevice
 from .Cloud import Cloud
+
+class HAInterface:
+    def __init__(self, device, protocol_version):
+        self.dps_cache = {}
+        self.device = device
+        self.protocol_version = protocol_version
+        self.isstillalive = True
+
+    def isalive(self):
+        return self.isstillalive
+
+    async def close(self):
+        self.device.device.close()
+        self.isstillalive = False
+
+    async def set_dp(self, state, dp_index):
+        await self.device.device.set_status(state, dp_index)
+
+    async def detect_available_dps(self):
+        while not self.device.started:
+            await asyncio.sleep(1)
+
+        return self.dps_cache
+
+
+class DeviceWrapper:
+    heartbeatssend = 0
+    heartbeatsreceived = 0
+
+    def __init__(self, device, listener):
+        self.dps_cache = {}
+        self.device = device
+        self.listener = listener
+        self.started = False
+
+
+async def heartbeat(device, haobj):
+    devid = device.device.get_deviceid()
+    await asyncio.sleep(5)
+    log.debug("[" + devid + "] start heartbeat thread")
+    await device.device.start_socket()
+    while haobj.isalive():
+        if device.device.get_version() == 3.4:
+            await device.device.updatedps()
+            await asyncio.sleep(2)
+            device.started = True
+        else:
+            await device.device.heartbeat(nowait=True)
+            device.started = True
+        device.heartbeatssend = device.heartbeatssend + 1
+        if device.device.get_version() == 3.4:
+            await asyncio.sleep(5)
+        else:
+            await asyncio.sleep(10)
+
+
+async def main(device, haobj):
+    devid = device.device.get_deviceid()
+    log.debug("[" + devid + "] start main thread")
+
+    await device.device.start_socket()
+    await device.device.status_quick()
+
+    while haobj.isalive():
+        try:
+            data = await device.device.getdata()
+        except Exception:
+            if device.listener != None:
+                device.listener.disconnected()
+            await haobj.close()
+
+        if data != None:
+            log.debug("[" + devid + "] Got data: " + str(data))
+            if "Error" in data:
+                log.debug("[" + devid + "] Received error response")
+
+            elif type(data) == TuyaMessage:
+                if data.cmd == 9:
+                    log.debug("[" + devid + "] Received Heartbeat response")
+                    device.heartbeatsreceived = device.heartbeatsreceived + 1
+                    if device.listener != None:
+                        device.listener.status_updated({})
+
+                if data.cmd == 7:
+                    log.debug("[" + devid + "] Received SET_DP response")
+            else:
+                if "dps" in data:
+                    haobj.dps_cache.update(data["dps"])
+
+                if device.listener != None:
+                    device.listener.status_updated(data)
+
+
+async def connect(
+    address,
+    device_id,
+    local_key,
+    protocol_version,
+    listener=None,
+):
+
+    device = OutletDevice(device_id, address, local_key, version=protocol_version)
+    device.set_socketPersistent(True)
+   
+    # start_socket here to generate exception on error
+    await device.start_socket()
+
+    dev = DeviceWrapper(device, listener)
+    haobj = HAInterface(dev, protocol_version)
+
+    task1 = asyncio.create_task(main(dev, haobj))
+    task2 = asyncio.create_task(heartbeat(dev, haobj))
+
+    return haobj
