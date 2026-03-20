@@ -13,8 +13,11 @@ log = logging.getLogger(__name__)
 class Device(XenonDevice):
     #def __init__(self, *args, **kwargs):
     #    super(Device, self).__init__(*args, **kwargs)
+    async def getdata(self):
+        data = await self._send_receive(None)
+        return data
 
-    def set_status(self, on, switch=1, nowait=False):
+    async def set_status(self, on, switch=1, nowait=False):
         """
         Set status of the device to 'on' or 'off'.
 
@@ -28,7 +31,7 @@ class Device(XenonDevice):
             switch = str(switch)  # index and payload is a string
         payload = self.generate_payload(CT.CONTROL, {switch: on})
 
-        data = self._send_receive(payload, getresponse=(not nowait))
+        data = await self._send_receive(payload, getresponse=(not nowait))
         log.debug("set_status received data=%r", data)
 
         return data
@@ -44,7 +47,7 @@ class Device(XenonDevice):
         log.debug("product received data=%r", data)
         return data
 
-    def heartbeat(self, nowait=True):
+    async def heartbeat(self, nowait=False):
         """
         Send a keep-alive HEART_BEAT command to keep the TCP connection open.
 
@@ -55,11 +58,11 @@ class Device(XenonDevice):
         """
         # open device, send request, then close connection
         payload = self.generate_payload(CT.HEART_BEAT)
-        data = self._send_receive(payload, 0, getresponse=(not nowait))
+        data = await self._send_receive(payload, 0, getresponse=(not nowait))
         log.debug("heartbeat received data=%r", data)
         return data
 
-    def updatedps(self, index=None, nowait=False):
+    async def updatedps(self, index=None, nowait=False):
         """
         Request device to update index.
 
@@ -73,7 +76,7 @@ class Device(XenonDevice):
         log.debug("updatedps() entry (dev_type is %s)", self.dev_type)
         # open device, send request, then close connection
         payload = self.generate_payload(CT.UPDATEDPS, index)
-        data = self._send_receive(payload, 0, getresponse=(not nowait))
+        data = await self._send_receive(payload, 0, getresponse=(not nowait))
         log.debug("updatedps received data=%r", data)
         return data
 
@@ -96,7 +99,7 @@ class Device(XenonDevice):
 
         return data
 
-    def set_multiple_values(self, data, nowait=False):
+    async def set_multiple_values(self, data, nowait=False):
         """
         Set multiple indexes at the same time
 
@@ -118,7 +121,7 @@ class Device(XenonDevice):
                 for k in data:
                     out[str(k)] = data[k]
                 payload = self.generate_payload(CT.CONTROL, out)
-                return self._send_receive(payload, getresponse=(not nowait))
+                return await self._send_receive(payload, getresponse=(not nowait))
 
         if self.max_simultaneous_dps > 0 and len(data) > self.max_simultaneous_dps:
             # too many DPs, break it up into smaller chunks
@@ -152,15 +155,15 @@ class Device(XenonDevice):
                     merge_dps_results(result, res)
         return result
 
-    def turn_on(self, switch=1, nowait=False):
+    async def turn_on(self, switch=1, nowait=False):
         """Turn the device on"""
-        return self.set_status(True, switch, nowait)
+        return await self.set_status(True, switch, nowait)
 
-    def turn_off(self, switch=1, nowait=False):
+    async def turn_off(self, switch=1, nowait=False):
         """Turn the device off"""
-        return self.set_status(False, switch, nowait)
+        return await self.set_status(False, switch, nowait)
 
-    def set_timer(self, num_secs, dps_id=0, nowait=False):
+    async def set_timer(self, num_secs, dps_id=0, nowait=False):
         """
         Set a timer.
 
@@ -184,6 +187,6 @@ class Device(XenonDevice):
 
         payload = self.generate_payload(CT.CONTROL, {dps_id: num_secs})
 
-        data = self._send_receive(payload, getresponse=(not nowait))
+        data = await self._send_receive(payload, getresponse=(not nowait))
         log.debug("set_timer received data=%r", data)
         return data

@@ -1,6 +1,7 @@
 # TinyTuya Module
 # -*- coding: utf-8 -*-
 
+import asyncio
 import binascii
 import hmac
 import json
@@ -257,6 +258,8 @@ class XenonDevice(object):
         self.seqno = 1
         self.sendWait = 0.01
         self.dps_cache = {}
+        self.reader = None
+        self.writer = None
         self.parent = parent
         self.children = {}
         self.received_wrong_cid_queue = []
@@ -311,6 +314,42 @@ class XenonDevice(object):
             # them (such as BulbDevice) make connections when called
             XenonDevice.set_version(self, 3.1)
 
+    async def start_socket(self):
+        try:
+
+            # future = asyncio.open_connection(self.address, self.port)
+
+            # self.reader, self.writer = await asyncio.wait_for(
+            #    future, timeout=3
+            # )
+            # self.reader, self.writer = yield from asyncio.wait_for(future, timeout=3)
+
+            if self.writer == None or self.reader == None:
+                self.reader, self.writer = await asyncio.open_connection(
+                    self.address, self.port
+                )
+                if self.reader != None and not self.reader.at_eof():
+                    log.debug(
+                        "[" + self.id + "] OPENED CONNECTION TO:" + str(self.address)
+                    )
+                    if self.version == 3.4:
+                        log.debug(
+                            "[" + self.id + "] Setting session key:" + str(self.version)
+                        )
+                        await self._negotiate_session_key()
+
+                else:
+                    log.debug(
+                        "["
+                        + self.id
+                        + "] CLOULD NOT OPEN CONNECTION TO:"
+                        + str(self.address)
+                    )
+                    raise Exception("Couldn't open socket")
+        except Exception as ex:
+            log.debug("[" + self.id + "] ERROR OPENING SOCKET!!!" + str(self.address))
+            raise ex
+
     def __del__(self):
         self.close()
 
@@ -323,7 +362,7 @@ class XenonDevice(object):
         return ("%s( %r, address=%r, local_key=%r, dev_type=%r, connection_timeout=%r, version=%r, persist=%r, cid=%r, parent=%r, children=%r )" %
                 (self.__class__.__name__, self.id, self.address, self.real_local_key.decode(), self.dev_type, self.connection_timeout, self.version, self.socketPersistent, self.cid, parent, self.children))
 
-    def _get_socket(self, renew):
+    async def _get_socket(self, renew):
         if renew and self.socket is not None:
             # self.socket.shutdown(socket.SHUT_RDWR)
             self.socket.close()
@@ -404,13 +443,16 @@ class XenonDevice(object):
         # existing socket active
         return True
 
+    def get_deviceid(self):
+        return self.id
+
     def _check_socket_close(self, force=False):
         if (force or not self.socketPersistent) and self.socket:
             self.socket.close()
             self.socket = None
             self.cache_clear()
 
-    def _recv_all(self, length):
+    async def _recv_all(self, length):
         tries = 2
         data = b''
 
@@ -848,12 +890,12 @@ class XenonDevice(object):
         """
         return response
 
-    def _negotiate_session_key(self):
-        rkey = self._send_receive_quick( self._negotiate_session_key_generate_step_1(), 2 )
+    async def _negotiate_session_key(self):
+        rkey = await self._send_receive_quick( self._negotiate_session_key_generate_step_1(), 2 )
         step3 = self._negotiate_session_key_generate_step_3( rkey )
         if not step3:
             return False
-        self._send_receive_quick( step3, None )
+        await self._send_receive_quick( step3, None )
         self._negotiate_session_key_generate_finalize()
         return True
 
@@ -1003,28 +1045,28 @@ class XenonDevice(object):
         self.disabledetect = True
         self.payload_dict = None
 
-    def receive(self):
+    async def receive(self):
         """
         Poll device to read any payload in the buffer.  Timeout results in None returned.
         """
-        return self._send_receive(None)
+        return await self._send_receive(None)
 
-    def send(self, payload):
+    async def send(self, payload):
         """
         Send single buffer `payload`.
 
         Args:
             payload(bytes): Data to send.
         """
-        return self._send_receive(payload, 0, getresponse=False)
+        return await self._send_receive(payload, 0, getresponse=False)
 
-    def status(self, nowait=False):
+    async def status(self, nowait=False):
         """Return device status."""
         query_type = CT.DP_QUERY
         log.debug("status() entry (dev_type is %s)", self.dev_type)
         payload = self.generate_payload(query_type)
 
-        data = self._send_receive(payload, 0, getresponse=(not nowait))
+        data = await self._send_receive(payload, 0, getresponse=(not nowait))
         log.debug("status() received data=%r", data)
         # Error handling
         if (not nowait) and data and "Err" in data:
@@ -1032,13 +1074,13 @@ class XenonDevice(object):
                 # Device22 detected and change - resend with new payload
                 log.debug("status() rebuilding payload for device22")
                 payload = self.generate_payload(query_type)
-                data = self._send_receive(payload)
+                data = await self._send_receive(payload)
             elif data["Err"] == str(ERR_PAYLOAD):
                 log.debug("Status request returned an error, is version %r and local key %r correct?", self.version, self.local_key)
 
         return data
 
-    def cached_status(self, historic=False, nowait=False):
+    async def cached_status(self, historic=False, nowait=False):
         """
         Return device last status if a persistent connection is open.
 
@@ -1119,7 +1161,7 @@ class XenonDevice(object):
         if version == 3.2: # 3.2 behaves like 3.3 with device22
             self.dev_type="device22"
             if self.dps_to_request == {}:
-                self.detect_available_dps()
+                asyncio.create_task(self.detect_available_dps())
 
     def set_socketPersistent(self, persist):
         self.socketPersistent = persist
