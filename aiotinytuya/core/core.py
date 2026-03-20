@@ -77,6 +77,7 @@
 
 # Modules
 from __future__ import print_function  # python 2.7 support
+import asyncio
 import logging
 import sys
 
